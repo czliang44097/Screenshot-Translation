@@ -78,7 +78,7 @@ if uploaded_files:
             # 初始化 Gemini
             try:
                 genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-3-flash-preview')
                 
                 # 動態調整 System Prompt
                 base_instruction = "你是一個專業的翻譯專家。請先辨識圖片中的文字（OCR），然後將其翻譯成「繁體中文（台灣）」。\n"
