@@ -10,9 +10,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 初始化主題狀態 ---
+# --- 初始化 Session State ---
 if 'dark_mode' not in st.session_state:
     st.session_state.dark_mode = False
+
+# 初始化 file_uploader 的 key，用於重置元件
+if 'uploader_key' not in st.session_state:
+    st.session_state.uploader_key = 0
+
+# --- 清空檔案的回調函數 ---
+def clear_files():
+    st.session_state.uploader_key += 1
+    # 這裡不需要 st.rerun()，因為按鈕點擊本身就會觸發重新執行
 
 # --- 側邊欄：設定區 ---
 with st.sidebar:
@@ -66,6 +75,12 @@ if st.session_state.dark_mode:
     div[data-testid="stExpander"] {
         background-color: #1e293b;
     }
+    /* 針對清空按鈕的樣式微調 */
+    button[kind="secondary"] {
+        background-color: #ef4444 !important;
+        color: white !important;
+        border: none !important;
+    }
     </style>
     """
 else:
@@ -85,6 +100,15 @@ else:
         background-color: #10b981 !important;
         color: white !important;
     }
+    /* 針對清空按鈕的樣式微調 */
+    button[kind="secondary"] {
+        background-color: #fee2e2 !important;
+        color: #ef4444 !important;
+        border: 1px solid #fecaca !important;
+    }
+    button[kind="secondary"]:hover {
+        background-color: #fecaca !important;
+    }
     </style>
     """
 
@@ -94,12 +118,22 @@ st.markdown(theme_css, unsafe_allow_html=True)
 st.title("🏮 多模態截圖翻譯大師")
 st.subheader("支援批量上傳與多語境優化的 OCR 翻譯工具")
 
-# 檔案上傳
-uploaded_files = st.file_uploader(
-    "請上傳截圖 (最多 10 張)", 
-    type=["png", "jpg", "jpeg"], 
-    accept_multiple_files=True
-)
+# 檔案上傳區域
+col1, col2 = st.columns([3, 1])
+with col1:
+    # 使用動態 key 來控制重置
+    uploaded_files = st.file_uploader(
+        "請上傳截圖 (最多 10 張)", 
+        type=["png", "jpg", "jpeg"], 
+        accept_multiple_files=True,
+        key=f"uploader_{st.session_state.uploader_key}"
+    )
+with col2:
+    st.write("") # 佔位，讓按鈕對齊
+    st.write("") 
+    # 清空按鈕
+    if st.button("🗑️ 一鍵清空", type="secondary", on_click=clear_files):
+        pass # 邏輯都在 on_click 處理了
 
 if uploaded_files:
     if len(uploaded_files) > 10:
