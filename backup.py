@@ -10,32 +10,18 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 自定義 CSS ---
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f5f7f9;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 10px;
-        height: 3em;
-        background-color: #10b981;
-        color: white;
-        font-weight: bold;
-    }
-    .stExpander {
-        background-color: white;
-        border-radius: 15px;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# --- 初始化主題狀態 ---
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = False
 
 # --- 側邊欄：設定區 ---
 with st.sidebar:
     st.title("⚙️ 設定面板")
+    
+    # 夜間模式切換按鈕
+    st.session_state.dark_mode = st.toggle("🌙 夜間模式", value=st.session_state.dark_mode)
+    
+    st.divider()
     
     api_key = st.text_input("請輸入 Gemini API 金鑰", type="password", help="請至 Google AI Studio 獲取金鑰")
     
@@ -54,6 +40,55 @@ with st.sidebar:
     )
     
     st.info("💡 提示：選擇正確的語境能顯著提升翻譯的自然度。")
+
+# --- 動態 CSS 主題控制 ---
+if st.session_state.dark_mode:
+    # 深色模式 CSS
+    theme_css = """
+    <style>
+    .stApp {
+        background-color: #0e1117;
+        color: #ffffff;
+    }
+    .stExpander {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 15px;
+    }
+    .stMarkdown p, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4 {
+        color: #f8fafc !important;
+    }
+    .stButton>button {
+        background-color: #059669 !important;
+        color: white !important;
+        border: none;
+    }
+    div[data-testid="stExpander"] {
+        background-color: #1e293b;
+    }
+    </style>
+    """
+else:
+    # 淺色模式 CSS
+    theme_css = """
+    <style>
+    .stApp {
+        background-color: #f8fafc;
+        color: #1e293b;
+    }
+    .stExpander {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 15px;
+    }
+    .stButton>button {
+        background-color: #10b981 !important;
+        color: white !important;
+    }
+    </style>
+    """
+
+st.markdown(theme_css, unsafe_allow_html=True)
 
 # --- 主介面 ---
 st.title("🏮 多模態截圖翻譯大師")
@@ -75,12 +110,11 @@ if uploaded_files:
         if not api_key:
             st.error("❌ 請先在側邊欄輸入有效的 Gemini API 金鑰。")
         else:
-            # 初始化 Gemini
             try:
                 genai.configure(api_key=api_key)
+                # 使用最新受支援的模型
                 model = genai.GenerativeModel('gemini-3-flash-preview')
                 
-                # 動態調整 System Prompt
                 base_instruction = "你是一個專業的翻譯專家。請先辨識圖片中的文字（OCR），然後將其翻譯成「繁體中文（台灣）」。\n"
                 base_instruction += "輸出格式：僅輸出翻譯後的純文字，不要包含任何開場白或解釋。\n"
                 
@@ -93,25 +127,20 @@ if uploaded_files:
                 else:
                     base_instruction += "語境：一般。請提供準確且自然的翻譯。"
 
-                # 進度條
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
-                # 處理每一張圖片
                 for i, uploaded_file in enumerate(uploaded_files):
                     status_text.text(f"正在處理第 {i+1}/{len(uploaded_files)} 張圖片：{uploaded_file.name}")
                     
-                    # 讀取圖片
                     img = Image.open(uploaded_file)
                     
-                    # 呼叫 Gemini
                     response = model.generate_content([
                         base_instruction,
                         f"來源語言：{source_lang}。請翻譯這張圖片中的內容。",
                         img
                     ])
                     
-                    # 顯示結果
                     with st.expander(f"🖼️ {uploaded_file.name} - 翻譯結果", expanded=True):
                         col1, col2 = st.columns([1, 1])
                         with col1:
@@ -119,10 +148,7 @@ if uploaded_files:
                         with col2:
                             st.markdown("**翻譯內容：**")
                             st.write(response.text)
-                            if st.button(f"複製內容", key=f"copy_{i}"):
-                                st.write("已顯示於上方，請手動選取複製。") # Streamlit 原生不支援 JS 複製，此為提示
                     
-                    # 更新進度
                     progress_bar.progress((i + 1) / len(uploaded_files))
                 
                 status_text.text("✅ 所有翻譯任務已完成！")
@@ -130,8 +156,7 @@ if uploaded_files:
 
             except Exception as e:
                 st.error(f"❌ 發生錯誤：{str(e)}")
-                st.info("請檢查 API 金鑰是否正確，或網路連線是否正常。")
+                st.info("請檢查 API 金鑰是否正確。")
 
 else:
     st.info("📸 請上傳圖片以開始翻譯任務。")
-
