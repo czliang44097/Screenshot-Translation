@@ -10,6 +10,20 @@ st.set_page_config(
     page_icon="🏮",
     layout="wide"
 )
+APP_ICON_URL = "https://raw.githubusercontent.com/czliang44097/Screenshot-Translation/main/icon.png" 
+
+custom_html = f"""
+    <head>
+        <link rel="apple-touch-icon" href="{APP_ICON_URL}">
+        <link rel="apple-touch-icon" sizes="180x180" href="{APP_ICON_URL}">
+        
+        <meta name="apple-mobile-web-app-title" content="翻譯大師">
+        
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    </head>
+"""
+st.markdown(custom_html, unsafe_allow_html=True)
 
 # --- 初始化 Session State ---
 if 'dark_mode' not in st.session_state:
