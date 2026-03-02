@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 # --- iOS 自訂圖示設定 ---
-APP_ICON_URL = "https://raw.githubusercontent.com/czliang44097/Screenshot-Translation/main/icon.png" 
+APP_ICON_URL = "https://github.com/czliang44097/Screenshot-Translation/blob/main/icon.png?raw=true" 
 
 # 請確保下方的 HTML 標籤「完全靠左」，不要有縮排
 custom_html = f"""
