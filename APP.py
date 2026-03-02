@@ -10,18 +10,22 @@ st.set_page_config(
     page_icon="🏮",
     layout="wide"
 )
+# --- iOS 自訂圖示設定 ---
 APP_ICON_URL = "https://raw.githubusercontent.com/czliang44097/Screenshot-Translation/main/icon.png" 
 
+# 請確保下方的 HTML 標籤「完全靠左」，不要有縮排
 custom_html = f"""
-    <head>
-        <link rel="apple-touch-icon" href="{APP_ICON_URL}">
-        <link rel="apple-touch-icon" sizes="180x180" href="{APP_ICON_URL}">
-        
-        <meta name="apple-mobile-web-app-title" content="翻譯大師">
-        
-        <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    </head>
+<link rel="apple-touch-icon" href="{APP_ICON_URL}">
+<link rel="apple-touch-icon" sizes="180x180" href="{APP_ICON_URL}">
+<meta name="apple-mobile-web-app-title" content="翻譯大師">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+    /* 順便隱藏可能產生的空白間距 */
+    .stMarkdown {{
+        display: none;
+    }}
+</style>
 """
 st.markdown(custom_html, unsafe_allow_html=True)
 
