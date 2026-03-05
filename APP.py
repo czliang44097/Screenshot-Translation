@@ -117,13 +117,15 @@ def get_instruction_and_settings(is_image=True):
         
     return base_instruction, safety_settings
 
-# 定義動態切換的模型清單 (根據 2026 年最新配額清單更新)
+# 定義動態切換的模型清單 (加入容錯命名組合)
 FALLBACK_MODELS = [
-    'gemini-3-flash',          # 第一順位：最新主力，速度快 (對應清單中的 Gemini 3 Flash)
-    'gemini-2.5-flash',        # 第二順位：次世代主力，超級穩 (對應清單中的 Gemini 2.5 Flash)
-    'gemini-2.5-pro',          # 第三順位：推理能力更強，但稍微吃資源 (對應清單中的 Gemini 2.5 Pro)
-    'gemini-2-flash',          # 第四順位：作為堅實的保底防線 (對應清單中的 Gemini 2 Flash)
-    'gemini-3-pro'             # 終極底線：最聰明的模型，當作最後備用 (對應清單中的 Gemini 3 Pro)
+    'gemini-3-flash-preview',     # 我們已知絕對能用的第一順位
+    'gemini-3-flash',             # 預留給未來轉正時使用
+    'gemini-2.5-flash-preview',   # 2.5 系列的預覽版命名
+    'gemini-2.5-flash',           # 2.5 系列的正式版命名
+    'gemini-2.5-pro-preview',     # 2.5 Pro 系列預覽版
+    'gemini-2.5-pro',             # 2.5 Pro 系列正式版
+    'gemini-2-flash'              # 終極保底
 ]
 
 # ==========================================
