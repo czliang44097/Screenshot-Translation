@@ -120,12 +120,12 @@ def get_instruction_and_settings(is_image=True):
 # 定義動態切換的模型清單 (加入容錯命名組合)
 FALLBACK_MODELS = [
     'gemini-3-flash-preview',     # 我們已知絕對能用的第一順位
-    'gemini-3-flash',             # 預留給未來轉正時使用
-    'gemini-2.5-flash-preview',   # 2.5 系列的預覽版命名
+    'gemini-3-pro-preview',             # 預留給未來轉正時使用
+    'gemini-3.1-pro-preview',   # 2.5 系列的預覽版命名
     'gemini-2.5-flash',           # 2.5 系列的正式版命名
-    'gemini-2.5-pro-preview',     # 2.5 Pro 系列預覽版
-    'gemini-2.5-pro',             # 2.5 Pro 系列正式版
-    'gemini-2-flash'              # 終極保底
+    'gemini-2.5-pro',     # 2.5 Pro 系列預覽版
+    'gemini-2.0-flash',             # 2.5 Pro 系列正式版
+    'gemini-2.0-flash-lite'              # 終極保底
 ]
 
 # ==========================================
