@@ -18,7 +18,6 @@ if 'dark_mode' not in st.session_state:
 if 'uploader_key' not in st.session_state:
     st.session_state.uploader_key = 0
     
-# 新增文字輸入框的 key
 if 'text_key' not in st.session_state:
     st.session_state.text_key = 0
 
@@ -32,7 +31,6 @@ def clear_text():
 with st.sidebar:
     st.title("⚙️ 設定面板")
     
-    # 【新增】工作模式選擇
     app_mode = st.radio(
         "選擇工作模式",
         ["📸 圖片截圖翻譯", "✍️ 純文字翻譯"],
@@ -41,7 +39,6 @@ with st.sidebar:
     
     st.divider()
     
-    # 夜間模式切換按鈕
     st.session_state.dark_mode = st.toggle("🌙 夜間模式", value=st.session_state.dark_mode)
     
     st.divider()
@@ -64,7 +61,7 @@ with st.sidebar:
     
     st.info("💡 提示：選擇正確的語境能顯著提升翻譯的自然度。")
 
-# --- 動態 CSS 主題控制 (完全保留你的原版寫法) ---
+# --- 動態 CSS 主題控制 ---
 if st.session_state.dark_mode:
     theme_css = """
     <style>
@@ -93,22 +90,21 @@ st.markdown(theme_css, unsafe_allow_html=True)
 st.title("🏮 多模態截圖翻譯大師")
 st.subheader(f"當前模式：{app_mode}")
 
-# --- 共用：初始化模型與安全設定 ---
-def get_model_and_instruction(is_image=True):
+# --- 共用：初始化指令與安全設定 ---
+def get_instruction_and_settings(is_image=True):
     safety_settings = {
         HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
     }
-    model = genai.GenerativeModel('gemini-3-flash-preview') 
     
     if is_image:
         base_instruction = "你是一個專業的翻譯專家。請先辨識圖片中的文字（OCR），然後將其翻譯成「繁體中文（台灣）」。\n"
     else:
         base_instruction = "你是一個專業的翻譯專家。請將以下文字翻譯成「繁體中文（台灣）」。\n"
         
-    base_instruction += "輸出格式：僅輸出翻譯後的純文字，不要包含任何開場白或解釋。\n"
+    base_instruction += "輸出格式：僅輸出翻譯後的純文字，不要包含任何開場白或解釋。請僅翻譯當前提供的內容，避免回顧過去的對話。\n"
     
     if context == "小說/網文":
         base_instruction += "語境：小說。請保持角色對話語氣，使用台灣繁體中文用語，確保流暢且符合文學感。"
@@ -119,10 +115,19 @@ def get_model_and_instruction(is_image=True):
     else:
         base_instruction += "語境：一般。提供準確自然的翻譯。"
         
-    return model, base_instruction, safety_settings
+    return base_instruction, safety_settings
+
+# 定義動態切換的模型清單 (根據 2026 年最新配額清單更新)
+FALLBACK_MODELS = [
+    'gemini-3-flash',          # 第一順位：最新主力，速度快 (對應清單中的 Gemini 3 Flash)
+    'gemini-2.5-flash',        # 第二順位：次世代主力，超級穩 (對應清單中的 Gemini 2.5 Flash)
+    'gemini-2.5-pro',          # 第三順位：推理能力更強，但稍微吃資源 (對應清單中的 Gemini 2.5 Pro)
+    'gemini-2-flash',          # 第四順位：作為堅實的保底防線 (對應清單中的 Gemini 2 Flash)
+    'gemini-3-pro'             # 終極底線：最聰明的模型，當作最後備用 (對應清單中的 Gemini 3 Pro)
+]
 
 # ==========================================
-# 模式 A：圖片截圖翻譯 (完全保留你的原始邏輯)
+# 模式 A：圖片截圖翻譯 
 # ==========================================
 if app_mode == "📸 圖片截圖翻譯":
     col1, col2 = st.columns([3, 1])
@@ -150,14 +155,16 @@ if app_mode == "📸 圖片截圖翻譯":
             else:
                 try:
                     genai.configure(api_key=api_key)
-                    model, base_instruction, safety_settings = get_model_and_instruction(is_image=True)
+                    base_instruction, safety_settings = get_instruction_and_settings(is_image=True)
 
                     progress_bar = st.progress(0)
                     status_text = st.empty()
                     
+                    # 狀態追蹤：紀錄當前使用的模型索引
+                    current_model_idx = 0
+                    
                     for i, uploaded_file in enumerate(uploaded_files):
                         status_text.text(f"正在處理第 {i+1}/{len(uploaded_files)} 張：{uploaded_file.name}")
-                        
                         img = Image.open(uploaded_file)
                         
                         with st.expander(f"🖼️ {uploaded_file.name} - 翻譯結果", expanded=True):
@@ -167,32 +174,49 @@ if app_mode == "📸 圖片截圖翻譯":
                             
                             with col_txt:
                                 st.markdown("**翻譯內容：**")
-                                try:
-                                    response = model.generate_content(
-                                        [base_instruction, f"來源語言：{source_lang}", img],
-                                        safety_settings=safety_settings
-                                    )
+                                
+                                success = False
+                                while current_model_idx < len(FALLBACK_MODELS) and not success:
+                                    model_name = FALLBACK_MODELS[current_model_idx]
+                                    model = genai.GenerativeModel(model_name)
                                     
-                                    # 完整保留防崩潰檢查
-                                    if response.candidates and response.candidates[0].finish_reason in [3, 4, 8]:
-                                        st.warning("⚠️ 該圖片內容觸發了 AI 安全過濾機制（可能是敏感詞彙），無法完整輸出。")
-                                        try:
-                                            st.write(response.text)
-                                        except:
-                                            st.info("無法顯示翻譯結果。")
-                                    else:
-                                        st.write(response.text)
+                                    try:
+                                        response = model.generate_content(
+                                            [base_instruction, f"來源語言：{source_lang}", img],
+                                            safety_settings=safety_settings
+                                        )
+                                        success = True
                                         
-                                except Exception as api_err:
-                                    if "finish_reason" in str(api_err):
-                                        st.error("❌ 翻譯被攔截：內容可能包含敏感描述，請調整語境或圖片再試。")
-                                    else:
-                                        st.error(f"❌ API 調用出錯：{str(api_err)}")
+                                        if response.candidates and response.candidates[0].finish_reason in [3, 4, 8]:
+                                            st.warning(f"⚠️ 內容觸發 {model_name} 安全過濾機制，無法完整輸出。")
+                                            try:
+                                                st.write(response.text)
+                                            except:
+                                                st.info("無法顯示翻譯結果。")
+                                        else:
+                                            st.write(response.text)
+                                            
+                                    except Exception as api_err:
+                                        err_str = str(api_err).lower()
+                                        if "429" in err_str or "quota" in err_str or "exhausted" in err_str:
+                                            st.toast(f"🔄 {model_name} 額度耗盡，自動切換至下一個模型...")
+                                            current_model_idx += 1
+                                        elif "finish_reason" in err_str:
+                                            st.error("❌ 翻譯被攔截：內容可能包含敏感描述，請調整語境或圖片再試。")
+                                            break
+                                        else:
+                                            st.error(f"❌ API 調用出錯：{str(api_err)}")
+                                            break
+                                
+                                if not success and current_model_idx >= len(FALLBACK_MODELS):
+                                    st.error("❌ 所有備用模型的免費額度均已耗盡！請稍後再試。")
+                                    break # 中斷後續圖片的處理
                         
                         progress_bar.progress((i + 1) / len(uploaded_files))
                     
-                    status_text.text("✅ 所有翻譯任務已完成！")
-                    st.balloons()
+                    if success:
+                        status_text.text("✅ 所有翻譯任務已完成！")
+                        st.balloons()
 
                 except Exception as e:
                     st.error(f"❌ 系統錯誤：{str(e)}")
@@ -202,7 +226,7 @@ if app_mode == "📸 圖片截圖翻譯":
 
 
 # ==========================================
-# 模式 B：純文字翻譯 (新增)
+# 模式 B：純文字翻譯 
 # ==========================================
 else:
     input_text = st.text_area(
@@ -227,35 +251,50 @@ else:
         else:
             try:
                 genai.configure(api_key=api_key)
-                model, base_instruction, safety_settings = get_model_and_instruction(is_image=False)
+                base_instruction, safety_settings = get_instruction_and_settings(is_image=False)
                 
                 with st.spinner("正在翻譯中..."):
-                    try:
-                        response = model.generate_content(
-                            [base_instruction, f"來源語言：{source_lang}", input_text],
-                            safety_settings=safety_settings
-                        )
+                    current_model_idx = 0
+                    success = False
+                    
+                    while current_model_idx < len(FALLBACK_MODELS) and not success:
+                        model_name = FALLBACK_MODELS[current_model_idx]
+                        model = genai.GenerativeModel(model_name)
                         
-                        st.markdown("### 📝 翻譯結果：")
-                        
-                        # 同樣套用嚴謹的安全審查捕捉機制
-                        if response.candidates and response.candidates[0].finish_reason in [3, 4, 8]:
-                            st.warning("⚠️ 部分內容觸發 AI 安全過濾機制。")
-                            try:
-                                st.write(response.text)
-                            except:
-                                st.info("無法顯示翻譯結果。")
-                        else:
-                            st.write(response.text)
+                        try:
+                            response = model.generate_content(
+                                [base_instruction, f"來源語言：{source_lang}", input_text],
+                                safety_settings=safety_settings
+                            )
+                            success = True
                             
-                    except Exception as api_err:
-                        if "finish_reason" in str(api_err):
-                            st.error("❌ 翻譯被攔截：文字內容觸發安全過濾。")
-                        else:
-                            st.error(f"❌ API 調用出錯：{str(api_err)}")
-                
-                st.success("✅ 翻譯完成！")
-                st.balloons()
+                            st.markdown("### 📝 翻譯結果：")
+                            if response.candidates and response.candidates[0].finish_reason in [3, 4, 8]:
+                                st.warning(f"⚠️ 內容觸發 {model_name} 安全過濾機制。")
+                                try:
+                                    st.write(response.text)
+                                except:
+                                    st.info("無法顯示翻譯結果。")
+                            else:
+                                st.write(response.text)
+                                
+                        except Exception as api_err:
+                            err_str = str(api_err).lower()
+                            if "429" in err_str or "quota" in err_str or "exhausted" in err_str:
+                                st.toast(f"🔄 {model_name} 額度耗盡，自動切換至下一個模型...")
+                                current_model_idx += 1
+                            elif "finish_reason" in err_str:
+                                st.error("❌ 翻譯被攔截：文字內容觸發安全過濾。")
+                                break
+                            else:
+                                st.error(f"❌ API 調用出錯：{str(api_err)}")
+                                break
+
+                    if success:
+                        st.success("✅ 翻譯完成！")
+                        st.balloons()
+                    elif current_model_idx >= len(FALLBACK_MODELS):
+                        st.error("❌ 所有備用模型的免費額度均已耗盡！請稍後再試。")
                 
             except Exception as e:
                 st.error(f"❌ 系統錯誤：{str(e)}")
